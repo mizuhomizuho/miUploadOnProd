@@ -8,4 +8,5 @@ php -f run.php show-files
 php -f run.php backup
 php -f run.php push
 php -f run.php push from-commit 8a8b8c8d8
+php -f run.php fc 78673180ee0fa0 bu sf
 ```

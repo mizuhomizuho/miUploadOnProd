@@ -115,7 +115,9 @@ class UploadOnProd
 
     private function getNoCommitedFiles(): false|array
     {
-        $shellExecRes = shell_exec('git status --short');
+        $shellExecRes = shell_exec('cd "'
+            . __DIR__ . $this->conf['baseRoot']
+            . '" && git status --short');
 
         $files = [];
 
@@ -180,15 +182,6 @@ class UploadOnProd
                 return false;
             }
 
-            $file = __DIR__  . '/' . $fileItem['file'];
-
-            $fileItem['file'] = mb_substr(
-                realpath(dirname($file)) . '/' . basename($file),
-                mb_strlen(realpath(__DIR__ . $this->conf['baseRoot']))
-            );
-
-            $fileItem['file'] = preg_replace('/^\//', '', $fileItem['file']);
-
             $files[] = $fileItem;
         }
 
@@ -197,8 +190,9 @@ class UploadOnProd
 
     private function getFilesFromCommit(): false|array
     {
-        $gitDiffTreeRes = shell_exec(
-            'git diff-tree --no-commit-id ' . $this->currentCommit['id'] . ' -r'
+        $gitDiffTreeRes = shell_exec('cd "'
+            . __DIR__ . $this->conf['baseRoot']
+            . '" && git diff-tree --no-commit-id ' . $this->currentCommit['id'] . ' -r'
         );
 
         $files = [];
@@ -349,7 +343,9 @@ class UploadOnProd
             )
         ) {
 
-            $shellExecRes = shell_exec('git log');
+            $shellExecRes = shell_exec('cd "'
+                . __DIR__ . $this->conf['baseRoot']
+                . '" && git log');
 
             $shellExecRes = "\n" . $shellExecRes;
 
