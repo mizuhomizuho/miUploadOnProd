@@ -4,7 +4,7 @@ namespace Mi\Tools;
 
 class UploadOnProd
 {
-    private const FLAGS = [
+    const FLAGS = [
         'isPush' => [
             'push',
             'p',
@@ -13,6 +13,11 @@ class UploadOnProd
             'backup',
             'bu',
             'b',
+        ],
+        'isNoBackup' => [
+            'no-backup',
+            'nbu',
+            'nb',
         ],
         'fromCommit' => [
             'from-commit',
@@ -135,16 +140,16 @@ class UploadOnProd
                 continue;
             }
 
-            $fileItem = [];
-
             if (in_array($matchItem['type'], ['M', 'D'])) {
 
+                $fileItem = [];
                 $fileItem['type'] = $matchItem['type'];
                 $fileItem['file'] = $matchItem['val'];
+                $files[] = $fileItem;
             }
             elseif ($matchItem['type'] === '??') {
 
-                $path = __DIR__ . '/' . $matchItem['val'];
+                $path = __DIR__ . $this->conf['baseRoot'] . '/' . $matchItem['val'];
 
                 if (is_dir($path)) {
 
@@ -152,14 +157,18 @@ class UploadOnProd
 
                     foreach ($this->getFilesFromDir($path) as $file) {
 
+                        $fileItem = [];
                         $fileItem['type'] = 'A';
-                        $fileItem['file'] = mb_substr($file, mb_strlen(__DIR__ . '/'));
+                        $fileItem['file'] = mb_substr($file, mb_strlen(__DIR__ . $this->conf['baseRoot'] . '/'));
+                        $files[] = $fileItem;
                     }
                 }
                 else {
 
+                    $fileItem = [];
                     $fileItem['type'] = 'A';
-                    $fileItem['file'] = mb_substr($path, mb_strlen(__DIR__ . '/'));
+                    $fileItem['file'] = $matchItem['val'];
+                    $files[] = $fileItem;
                 }
             }
             elseif ($matchItem['type'] === 'R') {
@@ -170,19 +179,16 @@ class UploadOnProd
                     return false;
                 }
 
+                $fileItem = [];
                 $fileItem['type'] = 'D';
                 $fileItem['file'] = $valExpl[0];
+                $files[] = $fileItem;
 
+                $fileItem = [];
                 $fileItem['type'] = 'A';
                 $fileItem['file'] = $valExpl[1];
+                $files[] = $fileItem;
             }
-
-            if (!$fileItem) {
-
-                return false;
-            }
-
-            $files[] = $fileItem;
         }
 
         return $files;
@@ -310,10 +316,81 @@ class UploadOnProd
         return $buCount;
     }
 
-    private function push(array $files): bool
+    private function push(array $files): bool|array
     {
+        $return = [];
 
-        return false;
+        $forPush = [];
+
+        $skipTypeD = [];
+
+        foreach ($files as $filesV) {
+
+            if (
+                !$this->currentCommit
+                && in_array($filesV['type'], ['M', 'A'])
+                && !file_exists(__DIR__ . $this->conf['baseRoot'] . '/' . $filesV['file'])
+            ) {
+                return false;
+            }
+
+            if (in_array($filesV['type'], ['D'])) {
+                $skipTypeD[] = $filesV['file'];
+                continue;
+            }
+
+            $forPush[] = $filesV;
+        }
+
+        $return['filesCount'] = count($files);
+        $return['forPushCount'] = count($forPush);
+
+        if ($skipTypeD) {
+            $return['skipTypeD'] = $skipTypeD;
+        }
+
+        $goodPused = 0;
+
+        foreach ($forPush as $forPushV) {
+
+            $curlRes = $this->curl([
+                'filePutContent' => file_get_contents(
+                    __DIR__ . $this->conf['baseRoot'] . '/' . $forPushV['file']
+                ),
+                'file' => $forPushV['file'],
+            ]);
+
+            $curlResDecode = (array) json_decode($curlRes, true);
+
+            if (
+                $curlResDecode
+                && isset($curlResDecode['filePutContent']['res'])
+                && $curlResDecode['filePutContent']['res']
+            ) {
+                $goodPused++;
+            }
+            else {
+                $return['errors'][] = [
+                    'file' => $forPushV,
+                    'curlRes' => $curlRes,
+                ];
+            }
+
+            if (
+                in_array($forPushV['type'], ['M'])
+                && isset($curlResDecode['filePutContent']['noFileExists'])
+                && $curlResDecode['filePutContent']['noFileExists']
+            ) {
+                $return['warning'][] = [
+                    'file' => $forPushV,
+                    'noFileExists' => true,
+                ];
+            }
+        }
+
+        $return['goodPused'] = $goodPused;
+
+        return $return;
     }
 
     function run($echo = true): array
@@ -518,14 +595,23 @@ class UploadOnProd
 
         if ($this->getFlag('isPush')) {
 
-            if (!isset($return['backupRes'])) {
+            if (
+                !isset($return['backupRes'])
+                && !$this->getFlag('isNoBackup')
+            ) {
 
                 $bu();
             }
 
             $return['pushRes'] = false;
 
-            if ($return['backupRes']) {
+            if (
+                (
+                    isset($return['backupRes'])
+                    && $return['backupRes']
+                )
+                || $this->getFlag('isNoBackup')
+            ) {
 
                 $return['pushRes'] = $this->push($files);
             }

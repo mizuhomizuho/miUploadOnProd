@@ -12,23 +12,31 @@ if (!isset($_POST['file'])) {
     return;
 }
 
-if (isset($_POST['filePutContent'])) {
-    $res['filePutContent'] = [
-        'res' => file_put_contents(__DIR__ . $conf['baseRoot'] . '/' . $_POST['file'], $_POST['filePutContent']),
-    ];
-}
+$file = __DIR__ . $conf['baseRoot'] . '/' . $_POST['file'];
 
 if (isset($_POST['fileGetContent'])) {
-    if (!file_exists(__DIR__ . $conf['baseRoot'] . '/' . $_POST['file'])) {
+    if (!file_exists($file)) {
         $res['fileGetContent'] = [
             'noFileExists' => true,
         ];
     }
     else {
         $res['fileGetContent'] = [
-            'res' => file_get_contents(__DIR__ . $conf['baseRoot'] . '/' . $_POST['file']),
+            'res' => file_get_contents($file),
         ];
     }
+}
+
+if (isset($_POST['filePutContent'])) {
+    $fpcRes = [];
+    if (!file_exists($file)) {
+        $fpcRes['noFileExists'] = true;
+    }
+    if (!file_exists(dirname($file))) {
+        mkdir(dirname($file), 0777, true);
+    }
+    $fpcRes['res'] = file_put_contents($file, $_POST['filePutContent']);
+    $res['filePutContent'] = $fpcRes;
 }
 
 echo json_encode($res);
