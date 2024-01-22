@@ -4,7 +4,7 @@ namespace Mi\Tools;
 
 class UploadOnProd
 {
-    const FLAGS = [
+    private const FLAGS = [
         'isPush' => [
             'push',
             'p',
