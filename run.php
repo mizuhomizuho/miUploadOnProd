@@ -529,6 +529,8 @@ class UploadOnProd
 
             $res = $this->getRes();
 
+            $this->isNoGitFilesRun = false;
+
             $return[] = $res;
 
             if (!$echo) {
@@ -582,8 +584,6 @@ class UploadOnProd
         else {
 
             if ($this->isNoGitFilesRun) {
-
-                $this->isNoGitFilesRun = false;
 
                 $return['isNoGitFiles'] = true;
 
