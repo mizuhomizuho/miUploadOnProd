@@ -40,6 +40,7 @@ class UploadOnProd
     private string $startTime;
     private ?string $fromCommit = null;
     private ?array $currentCommit = null;
+    private bool $isNoGitFilesRun = false;
 
     function __construct(array $argv)
     {
@@ -248,16 +249,21 @@ class UploadOnProd
         $argvParams = $this->argv;
         unset($argvParams[0]);
 
-        $fromLastCommit = $this->currentCommit
-            ? '/'
-                . date('Y-m-d H-i-s', strtotime($this->currentCommit['date']))
-                . ' ' . mb_substr($this->currentCommit['id'], 0, 8)
-            : '';
-
-        return __DIR__ . '/bu/'
+        $path = __DIR__ . '/bu/'
             . $this->startTime
-            . ' ' . implode(' ', $argvParams)
-            . $fromLastCommit;
+            . ' ' . implode(' ', $argvParams);
+
+        if ($this->currentCommit) {
+            return $path . '/'
+                . date('Y-m-d H-i-s', strtotime($this->currentCommit['date']))
+                . ' ' . mb_substr($this->currentCommit['id'], 0, 8);
+        }
+
+        if ($this->isNoGitFilesRun) {
+            return $path . '/noGitFiles';
+        }
+
+        return $path;
     }
 
     private function backup(array $files): bool|int
@@ -497,17 +503,15 @@ class UploadOnProd
             }
         }
 
-        $runParams[] = ['isCommit' => false];
-
         if (
             isset($this->conf['noGitFiles'])
             && $this->conf['noGitFiles']
         ) {
-            $runParams[] = [
-                'isCommit' => false,
-                'isNoGitFiles' => true,
-            ];
+            $this->isNoGitFilesRun = true;
+            $runParams[] = ['isCommit' => false];
         }
+
+        $runParams[] = ['isCommit' => false];
 
         $isFirstClearLineShowed = false;
 
@@ -523,7 +527,7 @@ class UploadOnProd
                 $this->currentCommit = null;
             }
 
-            $res = $this->getRes($runParamsV);
+            $res = $this->getRes();
 
             $return[] = $res;
 
@@ -565,7 +569,7 @@ class UploadOnProd
         return $return;
     }
 
-    private function getRes(array $runParams): array
+    private function getRes(): array
     {
         $return = [];
 
@@ -577,11 +581,12 @@ class UploadOnProd
         }
         else {
 
-            if (
-                isset($runParams['isNoGitFiles'])
-                && $runParams['isNoGitFiles']
-            ) {
+            if ($this->isNoGitFilesRun) {
+
+                $this->isNoGitFilesRun = false;
+
                 $return['isNoGitFiles'] = true;
+
                 $files = [];
                 foreach ($this->conf['noGitFiles'] as $noGitFile) {
                     $files[] = [
