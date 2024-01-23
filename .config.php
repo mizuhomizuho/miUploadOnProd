@@ -10,4 +10,5 @@ return [
     'key' => $conf['key'],
     'serverFileUrl' => $conf['serverFileUrl'],
     'baseRoot' => $conf['baseRoot'],
+    'noGitFiles' => $conf['noGitFiles'],
 ];

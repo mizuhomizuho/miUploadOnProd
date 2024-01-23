@@ -4,7 +4,7 @@ namespace Mi\Tools;
 
 class UploadOnProd
 {
-    const FLAGS = [
+    private const FLAGS = [
         'isPush' => [
             'push',
             'p',
@@ -50,7 +50,7 @@ class UploadOnProd
         if ($this->getFlag('fromCommit')) {
             foreach ($argv as $argvK => $argvV) {
                 if (
-                    in_array($argvV, static::FLAGS['fromCommit'])
+                    in_array($argvV, $this::FLAGS['fromCommit'])
                     && isset($argv[$argvK + 1])
                 ) {
                     $this->fromCommit = $argv[$argvK + 1];
@@ -62,7 +62,7 @@ class UploadOnProd
     private function getFlag(string $key): bool
     {
         foreach ($this->argv as $argvV) {
-            if (in_array($argvV, static::FLAGS[$key])) {
+            if (in_array($argvV, $this::FLAGS[$key])) {
                 return true;
             }
         }
@@ -397,7 +397,7 @@ class UploadOnProd
     {
         if ($this->getFlag('isHelp')) {
 
-            echo "\n" .var_export(static::FLAGS, true) . "\n\n";
+            echo "\n" .var_export($this::FLAGS, true) . "\n\n";
             return [];
         }
 
@@ -499,18 +499,31 @@ class UploadOnProd
 
         $runParams[] = ['isCommit' => false];
 
+        if (
+            isset($this->conf['noGitFiles'])
+            && $this->conf['noGitFiles']
+        ) {
+            $runParams[] = [
+                'isCommit' => false,
+                'isNoGitFiles' => true,
+            ];
+        }
+
         $isFirstClearLineShowed = false;
 
         foreach ($runParams as $runParamsV) {
 
-            if ($runParamsV['isCommit']) {
+            if (
+                isset($runParamsV['isCommit'])
+                && $runParamsV['isCommit']
+            ) {
                 $this->currentCommit = $runParamsV['commit'];
             }
             else{
                 $this->currentCommit = null;
             }
 
-            $res = $this->getRes();
+            $res = $this->getRes($runParamsV);
 
             $return[] = $res;
 
@@ -552,7 +565,7 @@ class UploadOnProd
         return $return;
     }
 
-    private function getRes($isFromLastCommit = false): array
+    private function getRes(array $runParams): array
     {
         $return = [];
 
@@ -564,7 +577,23 @@ class UploadOnProd
         }
         else {
 
-            $files = $this->getNoCommitedFiles();
+            if (
+                isset($runParams['isNoGitFiles'])
+                && $runParams['isNoGitFiles']
+            ) {
+                $return['isNoGitFiles'] = true;
+                $files = [];
+                foreach ($this->conf['noGitFiles'] as $noGitFile) {
+                    $files[] = [
+                        'type' => 'noGitFile',
+                        'file' => $noGitFile,
+                    ];
+                }
+            }
+            else{
+
+                $files = $this->getNoCommitedFiles();
+            }
         }
 
         if (!$files) {
