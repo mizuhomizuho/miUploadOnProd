@@ -249,7 +249,7 @@ class UploadOnProd
         $argvParams = $this->argv;
         unset($argvParams[0]);
 
-        $path = __DIR__ . '/bu/'
+        $path = __DIR__ . $this->conf['buDir'] . '/'
             . $this->startTime
             . ' ' . implode(' ', $argvParams);
 
@@ -271,30 +271,36 @@ class UploadOnProd
         $buCount = 0;
         $skipNoNeedBuCount = 0;
 
+        $filesForBu = [];
         foreach ($files as $file) {
-
-            $curlRes = $this->curl([
-                'fileGetContent' => true,
+            $filesForBu[] = [
                 'file' => $file['file'],
-            ]);
+            ];
+        }
 
-            $curlResDecode = (array) json_decode($curlRes, true);
+        $curlRes = $this->curl([
+            'fileGetContent' => $filesForBu,
+        ]);
 
-            if (!$curlResDecode) {
+        $curlResDecode = (array) json_decode($curlRes, true);
 
-                return false;
-            }
+        if (count($curlResDecode['fileGetContent']) !== count($filesForBu)) {
+
+            return false;
+        }
+
+        foreach ($curlResDecode['fileGetContent'] as $file) {
 
             if (
-                isset($curlResDecode['fileGetContent']['noFileExists'])
-                && $curlResDecode['fileGetContent']['noFileExists']
+                isset($file['noFileExists'])
+                && $file['noFileExists']
             ) {
 
                 $skipNoNeedBuCount++;
                 continue;
             }
 
-            if (!isset($curlResDecode['fileGetContent']['res'])) {
+            if (!isset($file['content'])) {
 
                 return false;
             }
@@ -306,7 +312,7 @@ class UploadOnProd
                 mkdir(dirname($buFile), 0777, true);
             }
 
-            $fpcRes = file_put_contents($buFile, $curlResDecode['fileGetContent']['res']);
+            $fpcRes = file_put_contents($buFile, $file['content']);
 
             if ($fpcRes) {
 
@@ -357,35 +363,59 @@ class UploadOnProd
 
         $goodPused = 0;
 
+        $fpcArr = [];
         foreach ($forPush as $forPushV) {
-
-            $curlRes = $this->curl([
-                'filePutContent' => file_get_contents(
+            $fpcArr[] = [
+                'content' => file_get_contents(
                     __DIR__ . $this->conf['baseRoot'] . '/' . $forPushV['file']
                 ),
                 'file' => $forPushV['file'],
+            ];
+        }
+
+        $curlResDecode = null;
+        if ($fpcArr) {
+
+            $curlRes = $this->curl([
+                'filePutContent' => $fpcArr,
             ]);
 
             $curlResDecode = (array) json_decode($curlRes, true);
+        }
+
+        if (
+            !$curlResDecode
+            || count($curlResDecode['filePutContent']) !== count($fpcArr)
+        ) {
+
+            $return['error'][] = [
+                'count($curlResDecode[filePutContent])' => count($curlResDecode['filePutContent']),
+                'count($fpcArr)' => count($fpcArr),
+            ];
+
+            return $return;
+        }
+
+        foreach ($forPush as $forPushK => $forPushV) {
+
+            $resItem = $curlResDecode['filePutContent'][$forPushK];
 
             if (
-                $curlResDecode
-                && isset($curlResDecode['filePutContent']['res'])
-                && $curlResDecode['filePutContent']['res']
+                isset($resItem['res'])
+                && $resItem['res']
             ) {
                 $goodPused++;
             }
             else {
                 $return['errors'][] = [
-                    'file' => $forPushV,
-                    'curlRes' => $curlRes,
+                    'resItem' => $resItem,
                 ];
             }
 
             if (
                 in_array($forPushV['type'], ['M'])
-                && isset($curlResDecode['filePutContent']['noFileExists'])
-                && $curlResDecode['filePutContent']['noFileExists']
+                && isset($resItem['noFileExists'])
+                && $resItem['noFileExists']
             ) {
                 $return['warning'][] = [
                     'file' => $forPushV,
