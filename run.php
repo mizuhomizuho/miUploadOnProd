@@ -426,6 +426,18 @@ class UploadOnProd
 
         $return['goodPused'] = $goodPused;
 
+        if (
+            count($return) === 3
+            && $return['goodPused']
+            && $return['goodPused'] === $return['filesCount']
+            && $return['goodPused'] === $return['forPushCount']
+        ) {
+            unset(
+                $return['filesCount'],
+                $return['forPushCount'],
+            );
+        }
+
         return $return;
     }
 
@@ -595,7 +607,17 @@ class UploadOnProd
 
             unset($res['files']);
 
-            echo var_export($res, true) . "\n\n";
+            if (
+                count($res) === 1
+                && isset($res['shortRes'])
+            ) {
+
+                echo $res['shortRes'] . "\n\n";
+            }
+            else {
+
+                echo var_export($res, true) . "\n\n";
+            }
         }
 
         return $return;
@@ -693,6 +715,41 @@ class UploadOnProd
             }
 
             file_put_contents($this->getBuDir() . '/result.log', var_export($return, true));
+        }
+
+        if (
+            count($return) === 4
+            && isset($return['files'])
+            && isset($return['isNoGitFiles'])
+            && isset($return['pushRes'])
+            && isset($return['isEnd'])
+            && $return['files']
+            && $return['isNoGitFiles']
+            && $return['isEnd']
+            && count($return['pushRes']) === 1
+            && isset($return['pushRes']['goodPused'])
+            && $return['pushRes']['goodPused']
+        ) {
+            $return = [
+                'files' => $return['files'],
+                'shortRes' => 'No git ' . $return['pushRes']['goodPused'],
+            ];
+        }
+        elseif (
+            count($return) === 3
+            && isset($return['files'])
+            && isset($return['pushRes'])
+            && isset($return['isEnd'])
+            && $return['files']
+            && $return['isEnd']
+            && count($return['pushRes']) === 1
+            && isset($return['pushRes']['goodPused'])
+            && $return['pushRes']['goodPused']
+        ) {
+            $return = [
+                'files' => $return['files'],
+                'shortRes' => 'No commit ' . $return['pushRes']['goodPused'],
+            ];
         }
 
         return $return;
