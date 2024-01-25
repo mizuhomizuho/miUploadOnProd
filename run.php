@@ -426,18 +426,6 @@ class UploadOnProd
 
         $return['goodPused'] = $goodPused;
 
-        if (
-            count($return) === 3
-            && $return['goodPused']
-            && $return['goodPused'] === $return['filesCount']
-            && $return['goodPused'] === $return['forPushCount']
-        ) {
-            unset(
-                $return['filesCount'],
-                $return['forPushCount'],
-            );
-        }
-
         return $return;
     }
 
@@ -600,27 +588,31 @@ class UploadOnProd
 
             unset($res['files']);
 
+            $isGoodPushRes = isset($res['pushRes'])
+                && is_array($res['pushRes'])
+                && count($res['pushRes']) === 3
+                && isset($res['pushRes']['filesCount'])
+                && isset($res['pushRes']['forPushCount'])
+                && isset($res['pushRes']['goodPused'])
+                && $res['pushRes']['goodPused']
+                && $res['pushRes']['goodPused'] === $res['pushRes']['filesCount']
+                && $res['pushRes']['goodPused'] === $res['pushRes']['forPushCount'];
+
             if (
                 count($res) === 3
                 && isset($res['isNoGitFiles'])
-                && isset($res['pushRes'])
                 && isset($res['isEnd'])
                 && $res['isNoGitFiles']
                 && $res['isEnd']
-                && count($res['pushRes']) === 1
-                && isset($res['pushRes']['goodPused'])
-                && $res['pushRes']['goodPused']
+                && $isGoodPushRes
             ) {
                 echo 'No git ' . $res['pushRes']['goodPused'];
             }
             elseif (
                 count($res) === 2
-                && isset($res['pushRes'])
                 && isset($res['isEnd'])
                 && $res['isEnd']
-                && count($res['pushRes']) === 1
-                && isset($res['pushRes']['goodPused'])
-                && $res['pushRes']['goodPused']
+                && $isGoodPushRes
             ) {
                 echo 'No commit ' . $res['pushRes']['goodPused'];
             }
