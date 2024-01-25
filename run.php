@@ -618,7 +618,10 @@ class UploadOnProd
             }
             else {
 
-                echo var_export($res, true);
+                echo json_encode($res,
+                    JSON_UNESCAPED_UNICODE
+                    |JSON_UNESCAPED_SLASHES
+                    |JSON_PRETTY_PRINT);
             }
 
             echo "\n";
