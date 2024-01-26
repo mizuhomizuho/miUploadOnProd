@@ -523,7 +523,7 @@ class UploadOnProd
 
         if ($this->getFlag('isHelp')) {
 
-            echo "\n" . json_encode($return,
+            echo "\n" . json_encode($this::FLAGS,
                 JSON_UNESCAPED_UNICODE
                 |JSON_UNESCAPED_SLASHES
                 |JSON_PRETTY_PRINT) . "\n\n";
@@ -673,13 +673,10 @@ class UploadOnProd
 
             if ($this->getFlag('isShowFiles')) {
 
-                if (
+                if (!(
                     isset($res['noFiles'])
                     && $res['noFiles']
-                ) {
-                    echo "No files...\n";
-                }
-                else {
+                )) {
 
                     $forShow = [];
 
@@ -768,9 +765,9 @@ class UploadOnProd
 
         if (!$files) {
 
-            return [
-                'noFiles' => true,
-            ];
+            $return['noFiles'] = true;
+
+            return $return;
         }
 
         $return['files'] = $files;
