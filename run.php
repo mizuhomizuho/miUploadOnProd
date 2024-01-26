@@ -481,6 +481,12 @@ class UploadOnProd
                 shell_exec($checkoutBackCmd);
             }
 
+            if ($this->getCurBranch() !== $curBranch) {
+                $return['err'][] = [
+                    'text' => 'Current branch ' . $this->getCurBranch(),
+                ];
+            }
+
             return $return;
         }
 
