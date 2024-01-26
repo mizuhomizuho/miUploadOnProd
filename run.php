@@ -402,7 +402,10 @@ class UploadOnProd
 
             if (
                 isset($resItem['res'])
-                && $resItem['res']
+                && (
+                    $resItem['res']
+                    || $resItem['res'] === 0
+                )
             ) {
                 $goodPused++;
             }
@@ -429,15 +432,112 @@ class UploadOnProd
         return $return;
     }
 
-    function run($echo = true): array
+    private function getCurBranch(): string
     {
-        if ($this->getFlag('isHelp')) {
+        $shellRes = shell_exec('cd "'
+            . __DIR__ . $this->conf['baseRoot']
+            . '" && git status');
 
-            echo "\n" .var_export($this::FLAGS, true) . "\n\n";
-            return [];
+        preg_match('/^On branch (?<curBranch>[^\n]+)\n/', $shellRes, $shellResMatch);
+
+        if (!$shellResMatch) {
+
+            trigger_error(__FUNCTION__, E_USER_ERROR);
         }
 
+        return $shellResMatch['curBranch'];
+    }
+
+    private function isNoMyLastCommitInMaster(): false|array
+    {
         $return = [];
+
+        $curBranch = $this->getCurBranch();
+
+        if ($curBranch === $this->conf['gitMasterBranchName']) {
+
+            $return['err'][] = [
+                'text' => 'On master branch',
+            ];
+
+            return $return;
+        }
+
+        $checkoutBackCmd = 'cd "'
+            . __DIR__ . $this->conf['baseRoot']
+            . '" && git checkout ' . $curBranch;
+
+        $shellRes = shell_exec('cd "'
+            . __DIR__ . $this->conf['baseRoot']
+            . '" && git checkout ' . $this->conf['gitMasterBranchName'] .' && git pull && git log');
+
+        if ($this->getCurBranch() !== $this->conf['gitMasterBranchName']) {
+
+            $return['err'][] = [
+                'text' => 'No master branch checkout',
+            ];
+
+            if ($this->getCurBranch() !== $curBranch) {
+                shell_exec($checkoutBackCmd);
+            }
+
+            return $return;
+        }
+
+        preg_match('/\nAuthor: (?<lastAuthor>[^\n]+)\n/', $shellRes, $shellResMatch);
+
+        if (!$shellResMatch) {
+
+            trigger_error(__FUNCTION__, E_USER_ERROR);
+        }
+
+        if ($shellResMatch['lastAuthor'] === $this->conf['gitLogAuthor']) {
+
+            shell_exec($checkoutBackCmd);
+
+            if ($this->getCurBranch() !== $curBranch) {
+
+                $return['err'][] = [
+                    'text' => 'No checkout back',
+                ];
+
+                return $return;
+            }
+
+            return false;
+        }
+
+        return $return;
+    }
+
+    function run($echo = true): array
+    {
+
+        $return = [];
+
+        if ($this->getFlag('isHelp')) {
+
+            echo "\n" . json_encode($return,
+                JSON_UNESCAPED_UNICODE
+                |JSON_UNESCAPED_SLASHES
+                |JSON_PRETTY_PRINT) . "\n\n";
+
+            return $return;
+        }
+
+        if (($isNoMyLastCommitInMasterRes = $this->isNoMyLastCommitInMaster()) !== false) {
+
+            $return = [
+                'isNoMyLastCommitInMaster' => $isNoMyLastCommitInMasterRes,
+            ];
+
+            echo "\n" . json_encode($return,
+                    JSON_UNESCAPED_UNICODE
+                    |JSON_UNESCAPED_SLASHES
+                    |JSON_PRETTY_PRINT) . "\n\n";
+
+            return $return;
+        }
 
         if (
             $this->getFlag('fromCommit')
