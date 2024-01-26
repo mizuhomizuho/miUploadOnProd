@@ -17,3 +17,38 @@ php -f run.php p nb
 php -f run.php p
 php -f run.php sf
 ```
+
+```bash
+php -f run.php help
+
+{
+    "isPush": [
+        "push",
+        "p"
+    ],
+    "isBackup": [
+        "backup",
+        "bu",
+        "b"
+    ],
+    "isNoBackup": [
+        "no-backup",
+        "nbu",
+        "nb"
+    ],
+    "fromCommit": [
+        "from-commit",
+        "fc"
+    ],
+    "isShowFiles": [
+        "show-files",
+        "sf"
+    ],
+    "isHelp": [
+        "help",
+        "man",
+        "h",
+        "m"
+    ]
+}
+```
