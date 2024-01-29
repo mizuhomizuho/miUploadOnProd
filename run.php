@@ -469,9 +469,61 @@ class UploadOnProd
             . __DIR__ . $this->conf['baseRoot']
             . '" && git checkout ' . $curBranch;
 
+        $shellStashRes = shell_exec('cd "'
+            . __DIR__ . $this->conf['baseRoot']
+            . '" && git stash save "uploadOnProdSave"');
+
+        $isStashSaved = $shellStashRes
+            === 'Saved working directory and index state On ' . $curBranch . ': uploadOnProdSave' . "\n";
+
+        if (
+            !$isStashSaved
+            && $shellStashRes !== 'No local changes to save' . "\n"
+        ) {
+
+            $return['err'][] = [
+                'text' => 'Stash error',
+            ];
+
+            return $return;
+        }
+
+        $stashBack = function () use (
+            &$return,
+            $curBranch,
+            $isStashSaved,
+        ): void {
+
+            if (!$isStashSaved) {
+                return;
+            }
+
+            $shellStashApplyRes = shell_exec('cd "'
+                . __DIR__ . $this->conf['baseRoot']
+                . '" && git stash apply');
+
+            if (!(
+                strpos($shellStashApplyRes,
+                    'On branch ' . $curBranch
+                    . "\n" . 'Your branch is up to date with \''
+                ) === 0
+                && strpos($shellStashApplyRes,
+                    'Changes not staged for commit:'
+                ) !== false
+                && strpos($shellStashApplyRes,
+                    'no changes added to commit (use "git add" and/or "git commit -a")'
+                ) !== false
+            )) {
+                $return['err'][] = [
+                    'text' => 'No stash apply',
+                ];
+            }
+        };
+
         $shellRes = shell_exec('cd "'
             . __DIR__ . $this->conf['baseRoot']
-            . '" && git checkout ' . $this->conf['gitMasterBranchName'] .' && git pull && git log');
+            . '" && git checkout ' . $this->conf['gitMasterBranchName']
+            . ' && git pull && git log');
 
         if ($this->getCurBranch() !== $this->conf['gitMasterBranchName']) {
 
@@ -481,6 +533,7 @@ class UploadOnProd
 
             if ($this->getCurBranch() !== $curBranch) {
                 shell_exec($checkoutBackCmd);
+                $stashBack();
             }
 
             if ($this->getCurBranch() !== $curBranch) {
@@ -502,6 +555,7 @@ class UploadOnProd
         if ($shellResMatch['lastAuthor'] === $this->conf['gitLogAuthor']) {
 
             shell_exec($checkoutBackCmd);
+            $stashBack();
 
             if ($this->getCurBranch() !== $curBranch) {
 
@@ -514,6 +568,13 @@ class UploadOnProd
 
             return false;
         }
+
+        shell_exec($checkoutBackCmd);
+        $stashBack();
+
+        $return['err'][] = [
+            'text' => 'No your last commit',
+        ];
 
         return $return;
     }
