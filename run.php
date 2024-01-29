@@ -2,6 +2,8 @@
 
 namespace Mi\Tools;
 
+use Bitrix\Main\Type\DateTime;
+
 class UploadOnProd
 {
     private const FLAGS = [
@@ -727,7 +729,9 @@ class UploadOnProd
                 && $res['isEnd']
                 && $isGoodPushRes
             ) {
-                echo 'Commit ' . $res['commit']['id'] . ' (' . $res['commit']['date'] . ') ' . $res['pushRes']['goodPused'];
+                echo 'Commit ' . substr($res['commit']['id'], 0, 8)
+                    . ' (' . (new \DateTime($res['commit']['date']))->format('Y-m-d H:i:s') . ') '
+                    . $res['pushRes']['goodPused'];
             }
             elseif (
                 count($res) === 2
