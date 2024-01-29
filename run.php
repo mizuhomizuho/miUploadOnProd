@@ -663,8 +663,6 @@ class UploadOnProd
 
             $res = $this->getRes();
 
-            $this->isNoGitFilesRun = false;
-
             $return[] = $res;
 
             if (!$echo) {
@@ -712,12 +710,31 @@ class UploadOnProd
                 echo 'No git ' . $res['pushRes']['goodPused'];
             }
             elseif (
-                count($res) === 2
+                count($res) === 3
+                && isset($res['isNoCommit'])
                 && isset($res['isEnd'])
+                && $res['isNoCommit']
                 && $res['isEnd']
                 && $isGoodPushRes
             ) {
                 echo 'No commit ' . $res['pushRes']['goodPused'];
+            }
+            elseif (
+                count($res) === 3
+                && isset($res['commit']['id'])
+                && isset($res['commit']['date'])
+                && isset($res['isEnd'])
+                && $res['isEnd']
+                && $isGoodPushRes
+            ) {
+                echo 'Commit ' . $res['commit']['id'] . ' (' . $res['commit']['date'] . ') ' . $res['pushRes']['goodPused'];
+            }
+            elseif (
+                count($res) === 2
+                && $res['noFiles'] === true
+                && $res['isNoCommit'] === true
+            ) {
+                echo 'No commit, no files...';
             }
             else {
 
@@ -756,8 +773,12 @@ class UploadOnProd
                         'file' => $noGitFile,
                     ];
                 }
+
+                $this->isNoGitFilesRun = false;
             }
             else{
+
+                $return['isNoCommit'] = true;
 
                 $files = $this->getNoCommitedFiles();
             }
