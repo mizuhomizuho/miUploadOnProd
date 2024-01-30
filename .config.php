@@ -13,7 +13,8 @@ return [
     'serverFileUrl' => $conf['serverFileUrl'],
 
     'baseRoot' => '/../../..',
-    'gitMasterBranchName' => 'dev',
+
+    'dirForCheckMaster' => '/../../../../uploadOnProdDev',
     'gitLogAuthor' => $conf['gitLogAuthor'],
 
     'buDir' => '/../../../../uploadOnProdBu',

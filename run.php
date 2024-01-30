@@ -434,116 +434,13 @@ class UploadOnProd
         return $return;
     }
 
-    private function getCurBranch(): string
-    {
-        $shellRes = shell_exec('cd "'
-            . __DIR__ . $this->conf['baseRoot']
-            . '" && git status');
-
-        preg_match('/^On branch (?<curBranch>[^\n]+)\n/', $shellRes, $shellResMatch);
-
-        if (!$shellResMatch) {
-
-            trigger_error(__FUNCTION__, E_USER_ERROR);
-        }
-
-        return $shellResMatch['curBranch'];
-    }
-
     private function isNoMyLastCommitInMaster(): false|array
     {
         $return = [];
 
-        $curBranch = $this->getCurBranch();
-
-        if ($curBranch === $this->conf['gitMasterBranchName']) {
-
-            $return['err'][] = [
-                'text' => 'On master branch',
-            ];
-
-            return $return;
-        }
-
-        $checkoutBackCmd = 'cd "'
-            . __DIR__ . $this->conf['baseRoot']
-            . '" && git checkout ' . $curBranch;
-
-        $shellStashRes = shell_exec('cd "'
-            . __DIR__ . $this->conf['baseRoot']
-            . '" && git stash save "uploadOnProdSave"');
-
-        $isStashSaved = $shellStashRes
-            === 'Saved working directory and index state On ' . $curBranch . ': uploadOnProdSave' . "\n";
-
-        if (
-            !$isStashSaved
-            && $shellStashRes !== 'No local changes to save' . "\n"
-        ) {
-
-            $return['err'][] = [
-                'text' => 'Stash error',
-            ];
-
-            return $return;
-        }
-
-        $stashBack = function () use (
-            &$return,
-            $curBranch,
-            $isStashSaved,
-        ): void {
-
-            if (!$isStashSaved) {
-                return;
-            }
-
-            $shellStashApplyRes = shell_exec('cd "'
-                . __DIR__ . $this->conf['baseRoot']
-                . '" && git stash apply');
-
-            if (!(
-                strpos($shellStashApplyRes,
-                    'On branch ' . $curBranch
-                    . "\n" . 'Your branch is up to date with \''
-                ) === 0
-                && strpos($shellStashApplyRes,
-                    'Changes not staged for commit:'
-                ) !== false
-                && strpos($shellStashApplyRes,
-                    'no changes added to commit (use "git add" and/or "git commit -a")'
-                ) !== false
-            )) {
-                $return['err'][] = [
-                    'text' => 'No stash apply',
-                ];
-            }
-        };
-
         $shellRes = shell_exec('cd "'
-            . __DIR__ . $this->conf['baseRoot']
-            . '" && git checkout ' . $this->conf['gitMasterBranchName']
-            . ' && git pull && git log');
-
-        if ($this->getCurBranch() !== $this->conf['gitMasterBranchName']) {
-
-            $return['err'][] = [
-                'text' => 'No master branch checkout',
-            ];
-
-            if ($this->getCurBranch() !== $curBranch) {
-                shell_exec($checkoutBackCmd);
-                $stashBack();
-            }
-
-            if ($this->getCurBranch() !== $curBranch) {
-                $return['err'][] = [
-                    'text' => 'Current branch ' . $this->getCurBranch(),
-                ];
-            }
-
-            return $return;
-        }
+            . __DIR__ . $this->conf['dirForCheckMaster']
+            . '" && git pull && git log');
 
         preg_match('/\nAuthor: (?<lastAuthor>[^\n]+)\n/', $shellRes, $shellResMatch);
 
@@ -554,23 +451,8 @@ class UploadOnProd
 
         if ($shellResMatch['lastAuthor'] === $this->conf['gitLogAuthor']) {
 
-            shell_exec($checkoutBackCmd);
-            $stashBack();
-
-            if ($this->getCurBranch() !== $curBranch) {
-
-                $return['err'][] = [
-                    'text' => 'No checkout back',
-                ];
-
-                return $return;
-            }
-
             return false;
         }
-
-        shell_exec($checkoutBackCmd);
-        $stashBack();
 
         $return['err'][] = [
             'text' => 'No your last commit',
