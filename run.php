@@ -678,6 +678,8 @@ class UploadOnProd
             }
             elseif (
                 count($res) === 2
+                && isset($res['noFiles'])
+                && isset($res['isNoCommit'])
                 && $res['noFiles'] === true
                 && $res['isNoCommit'] === true
             ) {
