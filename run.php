@@ -434,7 +434,7 @@ class UploadOnProd
         return $return;
     }
 
-    private function isNeedUpdMyBranch(): false|array
+    private function isNeedUpdMyBranch(): bool
     {
         shell_exec('cd "'
             . __DIR__ . $this->conf['dirForCheckMaster']
@@ -453,15 +453,11 @@ class UploadOnProd
 
         foreach ($masterIdsR as $masterIdsRK => $masterIdsRV) {
 
-            if ($myIdsR[$masterIdsRK] !== $masterIdsRV) {
-
-                $return = [];
-
-                $return['err'][] = [
-                    'text' => '🫡 Need upd!',
-                ];
-
-                return $return;
+            if (
+                !isset($myIdsR[$masterIdsRK])
+                || $myIdsR[$masterIdsRK] !== $masterIdsRV
+            ) {
+                return true;
             }
         }
 
@@ -482,10 +478,12 @@ class UploadOnProd
             return $return;
         }
 
-        if (($isNeedUpdMyBranchRes = $this->isNeedUpdMyBranch()) !== false) {
+        if ($this->isNeedUpdMyBranch()) {
 
             $return = [
-                'isNeedUpdMyBranch' => $isNeedUpdMyBranchRes,
+                'isNeedUpdMyBranch' => [
+                    'errText' => '🫡 Need upd!',
+                ],
             ];
 
             echo "\n" . json_encode($return,
