@@ -464,8 +464,10 @@ class UploadOnProd
         return false;
     }
 
-    function run($echo = true): array
+    function run(bool $isNeedEcho = true): array
     {
+        $echo = $isNeedEcho;
+
         $return = [];
 
         if ($this->getFlag('isHelp')) {
