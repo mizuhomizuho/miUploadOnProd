@@ -434,36 +434,42 @@ class UploadOnProd
         return $return;
     }
 
-    private function isNoMyLastCommitInMaster(): false|array
+    private function isNeedUpdMyBranch(): false|array
     {
-        $return = [];
-
-        $shellRes = shell_exec('cd "'
+        shell_exec('cd "'
             . __DIR__ . $this->conf['dirForCheckMaster']
-            . '" && git pull && git log');
+            . '" && git pull');
 
-        preg_match('/\nAuthor: (?<lastAuthor>[^\n]+)\n/', $shellRes, $shellResMatch);
+        $masterIds = explode("\n", shell_exec('cd "'
+            . __DIR__ . $this->conf['dirForCheckMaster']
+            . '" && git log --oneline --format=%H'));
 
-        if (!$shellResMatch) {
+        $myIds = explode("\n", shell_exec('cd "'
+            . __DIR__ . $this->conf['baseRoot']
+            . '" && git log --oneline --format=%H'));
 
-            trigger_error(__FUNCTION__, E_USER_ERROR);
+        $masterIdsR = array_reverse($masterIds);
+        $myIdsR = array_reverse($myIds);
+
+        foreach ($masterIdsR as $masterIdsRK => $masterIdsRV) {
+
+            if ($myIdsR[$masterIdsRK] !== $masterIdsRV) {
+
+                $return = [];
+
+                $return['err'][] = [
+                    'text' => '🫡 Need upd!',
+                ];
+
+                return $return;
+            }
         }
 
-        if ($shellResMatch['lastAuthor'] === $this->conf['gitLogAuthor']) {
-
-            return false;
-        }
-
-        $return['err'][] = [
-            'text' => 'No your last commit',
-        ];
-
-        return $return;
+        return false;
     }
 
     function run($echo = true): array
     {
-
         $return = [];
 
         if ($this->getFlag('isHelp')) {
@@ -476,10 +482,10 @@ class UploadOnProd
             return $return;
         }
 
-        if (($isNoMyLastCommitInMasterRes = $this->isNoMyLastCommitInMaster()) !== false) {
+        if (($isNeedUpdMyBranchRes = $this->isNeedUpdMyBranch()) !== false) {
 
             $return = [
-                'isNoMyLastCommitInMaster' => $isNoMyLastCommitInMasterRes,
+                'isNeedUpdMyBranch' => $isNeedUpdMyBranchRes,
             ];
 
             echo "\n" . json_encode($return,

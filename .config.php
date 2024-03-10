@@ -15,7 +15,6 @@ return [
     'baseRoot' => '/../../..',
 
     'dirForCheckMaster' => '/../../../../uploadOnProdDev',
-    'gitLogAuthor' => $conf['gitLogAuthor'],
 
     'buDir' => '/../../../../uploadOnProdBu',
 
