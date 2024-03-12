@@ -2,8 +2,6 @@
 
 namespace Mi\Tools;
 
-use Bitrix\Main\Type\DateTime;
-
 class UploadOnProd
 {
     private const FLAGS = [
